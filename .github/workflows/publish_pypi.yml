@@ -85,7 +85,7 @@ jobs:
       uses: messense/maturin-action@v1
       with:
         target: ${{ matrix.target }}
-        manylinux: auto
+        manylinux: 2014
         args: --release --out dist --no-sdist
     - name: Install built wheel
       run: |
