@@ -87,7 +87,7 @@ pub(crate) fn repetition_code(length: usize) -> PyLinearCode {
 ///     >>> code_pcm.has_same_codespace(code_gm)
 ///     True
 #[pyclass(name = "LinearCode", module = "qecstruct")]
-#[pyo3(text_signature = "(parity_check_matrix=None, generator_matrix=None)")]
+#[pyo3(text_signature = "(par_mat=None, gen_mat=None)")]
 pub struct PyLinearCode {
     pub(crate) inner: LinearCode,
 }
@@ -101,12 +101,12 @@ impl From<LinearCode> for PyLinearCode {
 #[pymethods]
 impl PyLinearCode {
     #[new]
-    #[args(parity_check_matrix = "None", generator_matrix = "None")]
+    #[args(par_mat = "None", gen_mat = "None")]
     pub fn new(
-        parity_check_matrix: Option<PyBinaryMatrix>,
-        generator_matrix: Option<PyBinaryMatrix>,
+        par_mat: Option<PyBinaryMatrix>,
+        gen_mat: Option<PyBinaryMatrix>,
     ) -> PyResult<Self> {
-        match (parity_check_matrix, generator_matrix) {
+        match (par_mat, gen_mat) {
             (Some(h), Some(g)) => h.dot_with_matrix(&g.transposed()).and_then(|product| {
                 if product.is_zero() {
                     Ok(Self {
@@ -130,13 +130,13 @@ impl PyLinearCode {
 
     /// The parity check matrix of the code.
     #[pyo3(text_signature = "(self)")]
-    pub fn parity_check_matrix(&self) -> PyBinaryMatrix {
+    pub fn par_mat(&self) -> PyBinaryMatrix {
         self.inner.parity_check_matrix().clone().into()
     }
 
     /// The parity check matrix of the code.
     #[pyo3(text_signature = "(self)")]
-    pub fn generator_matrix(&self) -> PyBinaryMatrix {
+    pub fn gen_mat(&self) -> PyBinaryMatrix {
         self.inner.generator_matrix().clone().into()
     }
 
