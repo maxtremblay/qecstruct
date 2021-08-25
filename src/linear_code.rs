@@ -14,9 +14,7 @@ pub(crate) fn random_regular_code(
     bit_degree: usize,
     check_degree: usize,
     random_seed: Option<u64>,
-    tag: Option<String>,
 ) -> PyResult<PyLinearCode> {
-    let tag = tag.unwrap_or("".to_string());
     let mut rng = get_rng_with_seed(random_seed);
     LinearCode::random_regular_code()
         .num_bits(num_bits)
@@ -24,22 +22,19 @@ pub(crate) fn random_regular_code(
         .bit_degree(bit_degree)
         .check_degree(check_degree)
         .sample_with(&mut rng)
-        .map(|code| PyLinearCode { inner: code, tag })
+        .map(|code| PyLinearCode { inner: code })
         .map_err(|error| PyValueError::new_err(error.to_string()))
 }
 
-
-pub(crate) fn hamming_code(tag: Option<String>) -> PyLinearCode {
+pub(crate) fn hamming_code() -> PyLinearCode {
     PyLinearCode {
         inner: LinearCode::hamming_code(),
-        tag: tag.unwrap_or("".to_string()),
     }
 }
 
-pub(crate) fn repetition_code(length: usize, tag: Option<String>) -> PyLinearCode {
+pub(crate) fn repetition_code(length: usize) -> PyLinearCode {
     PyLinearCode {
         inner: LinearCode::repetition_code(length),
-        tag: tag.unwrap_or("".to_string()),
     }
 }
 
@@ -59,10 +54,6 @@ pub(crate) fn repetition_code(length: usize, tag: Option<String>) -> PyLinearCod
 ///     The generator matrix of the code.
 ///     Most be orthogonal to the parity check matrix.
 ///     If omited, one is computed from the parity check matrix.
-/// tag : Optional[String]
-///     A label for the code used to save data
-///     and make automatic legend in plots.
-///     If omited, the empty string is used a default tag.
 ///
 /// Example
 /// -------
@@ -85,8 +76,8 @@ pub(crate) fn repetition_code(length: usize, tag: Option<String>) -> PyLinearCod
 /// Note
 /// ----
 /// Use the `==` if you want to know if 2 codes
-/// have exactly the same parity check matrix, generator matrix and tags.
-/// However, since there is freedom in the choice of the matrices and tag
+/// have exactly the same parity check matrix and generator matrix.
+/// However, since there is freedom in the choice of the matrices
 /// for the same code, use **has_same_codespace** method
 /// if you want to know if 2 codes define the same codespace even
 /// if they may have different parity check matrices or generator matrices.
@@ -95,38 +86,31 @@ pub(crate) fn repetition_code(length: usize, tag: Option<String>) -> PyLinearCod
 ///     False
 ///     >>> code_pcm.has_same_codespace(code_gm)
 ///     True
-#[pyclass(name = "LinearCode", module="qecstruct")]
-#[pyo3(text_signature = "(parity_check_matrix=None, generator_matrix=None, tag=None)")]
+#[pyclass(name = "LinearCode", module = "qecstruct")]
+#[pyo3(text_signature = "(parity_check_matrix=None, generator_matrix=None)")]
 pub struct PyLinearCode {
     pub(crate) inner: LinearCode,
-    tag: String,
 }
 
 impl From<LinearCode> for PyLinearCode {
     fn from(inner: LinearCode) -> Self {
-        Self {
-            inner,
-            tag: String::from(""),
-        }
+        Self { inner }
     }
 }
 
 #[pymethods]
 impl PyLinearCode {
     #[new]
-    #[args(parity_check_matrix = "None", generator_matrix = "None", tag = "None")]
+    #[args(parity_check_matrix = "None", generator_matrix = "None")]
     pub fn new(
         parity_check_matrix: Option<PyBinaryMatrix>,
         generator_matrix: Option<PyBinaryMatrix>,
-        tag: Option<String>,
     ) -> PyResult<Self> {
-        let tag = tag.unwrap_or("".to_string());
         match (parity_check_matrix, generator_matrix) {
             (Some(h), Some(g)) => h.dot_with_matrix(&g.transposed()).and_then(|product| {
                 if product.is_zero() {
                     Ok(Self {
                         inner: LinearCode::from_parity_check_matrix(h.inner),
-                        tag,
                     })
                 } else {
                     Err(PyValueError::new_err("matrices are not orthogonal"))
@@ -134,24 +118,14 @@ impl PyLinearCode {
             }),
             (Some(h), None) => Ok(Self {
                 inner: LinearCode::from_parity_check_matrix(h.inner),
-                tag,
             }),
             (None, Some(g)) => Ok(Self {
                 inner: LinearCode::from_parity_check_matrix(g.inner),
-                tag,
             }),
             (None, None) => Ok(Self {
                 inner: LinearCode::empty(),
-                tag,
             }),
         }
-    }
-
-
-    /// The tag of the code.
-    #[pyo3(text_signature = "(self)")]
-    pub fn tag(&self) -> &str {
-        &self.tag
     }
 
     /// The parity check matrix of the code.
@@ -275,9 +249,8 @@ impl PyLinearCode {
     pub fn __setstate__(&mut self, py: Python, state: PyObject) -> PyResult<()> {
         match state.extract::<&PyBytes>(py) {
             Ok(s) => serde_pickle::from_slice(s.as_bytes())
-                .map(|(inner, tag)| {
+                .map(|inner| {
                     self.inner = inner;
-                    self.tag = tag;
                 })
                 .map_err(|error| PyValueError::new_err(error.to_string())),
             Err(e) => Err(e),
@@ -287,7 +260,7 @@ impl PyLinearCode {
     pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
         Ok(PyBytes::new(
             py,
-            &serde_pickle::to_vec(&(&self.inner, &self.tag), true).unwrap(),
+            &serde_pickle::to_vec(&(&self.inner), true).unwrap(),
         )
         .to_object(py))
     }
@@ -296,17 +269,11 @@ impl PyLinearCode {
 #[pyproto]
 impl PyObjectProtocol for PyLinearCode {
     fn __repr__(&self) -> String {
-        let mut display = if self.tag != "" {
-            format!("Tag = {}\n", self.tag)
-        } else {
-            String::new()
-        };
-        display.push_str(&format!(
+        format!(
             "Parity check matrix:\n{}\nGenerator matrix:\n{}",
             self.inner.parity_check_matrix(),
             self.inner.generator_matrix(),
-        ));
-        display
+        )
     }
 }
 

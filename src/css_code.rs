@@ -12,25 +12,21 @@ use pyo3::ToPyObject;
 pub(crate) fn hypergraph_product(
     first_code: &PyLinearCode,
     second_code: &PyLinearCode,
-    tag: Option<String>,
 ) -> PyCssCode {
     PyCssCode {
         inner: CssCode::hypergraph_product(&first_code.inner, &second_code.inner),
-        tag: tag.unwrap_or("".to_string()),
     }
 }
 
-pub(crate) fn steane_code(tag: Option<String>) -> PyCssCode {
+pub(crate) fn steane_code() -> PyCssCode {
     PyCssCode {
         inner: CssCode::steane_code(),
-        tag: tag.unwrap_or("".to_string()),
     }
 }
 
-pub(crate) fn shor_code(tag: Option<String>) -> PyCssCode {
+pub(crate) fn shor_code() -> PyCssCode {
     PyCssCode {
         inner: CssCode::shor_code(),
-        tag: tag.unwrap_or("".to_string()),
     }
 }
 /// An implementation of quantum CSS codes optimized for LDPC codes.
@@ -45,46 +41,30 @@ pub(crate) fn shor_code(tag: Option<String>) -> PyCssCode {
 /// z_code : pyqec.classical.LinearCode
 ///     The code for which the parity check matrix generator the Z stabilizers
 ///     and the generator matrix generates the X logical operators.
-/// tag : Optional[String]
-///     A label for the code used to save data
-///     and make automatic legend in plots.
-///     If omited, the empty string is used a default tag.
 #[pyclass(name = "CssCode", module = "qecstruct")]
-#[pyo3(text_signature = "(x_code, z_code, tag=None)")]
+#[pyo3(text_signature = "(x_code, z_code)")]
 pub struct PyCssCode {
     pub(crate) inner: CssCode,
-    tag: String,
 }
 
 impl From<CssCode> for PyCssCode {
     fn from(inner: CssCode) -> Self {
-        Self {
-            inner,
-            tag: String::from(""),
-        }
+        Self { inner }
     }
 }
 
 #[pymethods]
 impl PyCssCode {
     #[new]
-    #[args(x_code, z_code, tag = "None")]
+    #[args(x_code, z_code)]
     pub fn new(
         x_code: &PyLinearCode,
         z_code: &PyLinearCode,
-        tag: Option<String>,
     ) -> PyResult<Self> {
-        let tag = tag.unwrap_or("".to_string());
         match CssCode::try_new(&x_code.inner, &z_code.inner) {
-            Ok(inner) => Ok(Self { inner, tag }),
+            Ok(inner) => Ok(Self { inner }),
             Err(error) => Err(PyValueError::new_err(error.to_string())),
         }
-    }
-
-    /// The tag of the code.
-    #[pyo3(text_signature = "(self)")]
-    pub fn tag(&self) -> &str {
-        &self.tag
     }
 
     /// Returns the X stabilizer generators represented as a binary matrix.
@@ -179,9 +159,8 @@ impl PyCssCode {
     pub fn __setstate__(&mut self, py: Python, state: PyObject) -> PyResult<()> {
         match state.extract::<&PyBytes>(py) {
             Ok(s) => serde_pickle::from_slice(s.as_bytes())
-                .map(|(inner, tag)| {
+                .map(|inner| {
                     self.inner = inner;
-                    self.tag = tag;
                 })
                 .map_err(|error| PyValueError::new_err(error.to_string())),
             Err(e) => Err(e),
@@ -189,28 +168,18 @@ impl PyCssCode {
     }
 
     pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
-        Ok(PyBytes::new(
-            py,
-            &serde_pickle::to_vec(&(&self.inner, &self.tag), true).unwrap(),
-        )
-        .to_object(py))
+        Ok(PyBytes::new(py, &serde_pickle::to_vec(&(&self.inner), true).unwrap()).to_object(py))
     }
 }
 
 #[pyproto]
 impl PyObjectProtocol for PyCssCode {
     fn __repr__(&self) -> String {
-        let mut display = if self.tag != "" {
-            format!("Tag = {}\n", self.tag)
-        } else {
-            String::new()
-        };
-        display.push_str(&format!(
+        format!(
             "X stabilizers:\n{}Z stabilizers:\n{}",
             self.inner.x_stabs_binary(),
             self.inner.z_stabs_binary(),
-        ));
-        display
+        )
     }
 }
 
