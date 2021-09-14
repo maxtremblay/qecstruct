@@ -1,4 +1,4 @@
-use crate::randomness::get_rng_with_seed;
+use crate::randomness::PyRng;
 use crate::sparse::{PyBinaryMatrix, PyBinaryVector};
 use ldpc::classical::LinearCode;
 use pyo3::exceptions::PyValueError;
@@ -13,15 +13,14 @@ pub(crate) fn random_regular_code(
     num_checks: usize,
     bit_degree: usize,
     check_degree: usize,
-    random_seed: Option<u64>,
+    rng: &mut PyRng
 ) -> PyResult<PyLinearCode> {
-    let mut rng = get_rng_with_seed(random_seed);
     LinearCode::random_regular_code()
         .num_bits(num_bits)
         .num_checks(num_checks)
         .bit_degree(bit_degree)
         .check_degree(check_degree)
-        .sample_with(&mut rng)
+        .sample_with(&mut rng.inner)
         .map(|code| PyLinearCode { inner: code })
         .map_err(|error| PyValueError::new_err(error.to_string()))
 }

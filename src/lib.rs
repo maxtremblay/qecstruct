@@ -13,6 +13,7 @@ mod pauli;
 use crate::pauli::{PyPauli, PyPauliOperator};
 
 mod randomness;
+use randomness::PyRng;
 
 mod sparse;
 use sparse::{PyBinaryMatrix, PyBinaryVector};
@@ -27,6 +28,7 @@ fn qecstruct(_py: Python, module: &PyModule) -> PyResult<()> {
     module.add_class::<PyPauli>()?;
     module.add_class::<PyPauliOperator>()?;
     module.add_class::<PyCssCode>()?;
+    module.add_class::<PyRng>()?;
 
     /// Samples a random regular codes.
     ///
@@ -63,9 +65,9 @@ fn qecstruct(_py: Python, module: &PyModule) -> PyResult<()> {
         num_checks: usize,
         bit_degree: usize,
         check_degree: usize,
-        random_seed: Option<u64>,
+        rng: &mut PyRng,
     ) -> PyResult<PyLinearCode> {
-        random_regular_code(num_bits, num_checks, bit_degree, check_degree, random_seed)
+        random_regular_code(num_bits, num_checks, bit_degree, check_degree, rng)
     }
 
     /// Returns an instance of the Hamming code.
