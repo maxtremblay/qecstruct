@@ -26,4 +26,18 @@ impl PyRng {
             None => RandomNumberGenerator::from_entropy(),
         })
     }
+
+    #[pyo3(text_signature = "(self)")]
+    pub fn jump(&mut self) -> Self {
+        let other = Self { inner: self.inner.clone() };
+        self.inner.jump();
+        other
+    }
+
+    #[pyo3(text_signature = "(self)")]
+    pub fn long_jump(&mut self) -> Self {
+        let other = Self { inner: self.inner.clone() };
+        self.inner.long_jump();
+        other
+    }
 }
