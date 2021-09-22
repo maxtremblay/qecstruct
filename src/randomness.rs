@@ -1,4 +1,6 @@
 use pyo3::prelude::*;
+use pyo3::exceptions::PyValueError;
+use pyo3::types::PyBytes;
 use rand::SeedableRng;
 use rand_xoshiro::Xoshiro512StarStar;
 
@@ -39,5 +41,24 @@ impl PyRng {
         let other = Self { inner: self.inner.clone() };
         self.inner.long_jump();
         other
+    }
+
+    pub fn __setstate__(&mut self, py: Python, state: PyObject) -> PyResult<()> {
+        match state.extract::<&PyBytes>(py) {
+            Ok(s) => serde_pickle::from_slice(s.as_bytes())
+                .map(|inner| {
+                    self.inner = inner;
+                })
+                .map_err(|error| PyValueError::new_err(error.to_string())),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
+        Ok(PyBytes::new(
+            py,
+            &serde_pickle::to_vec(&(&self.inner), true).unwrap(),
+        )
+        .to_object(py))
     }
 }
