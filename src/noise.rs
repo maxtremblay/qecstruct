@@ -23,9 +23,10 @@ pub struct PyBinarySymmetricChannel {
 impl PyBinarySymmetricChannel {
     #[new]
     #[args(probability)]
-    pub fn new(probability: f64) -> PyResult<PyBinarySymmetricChannel> {
+    pub fn new(probability: Option<f64>) -> PyResult<PyBinarySymmetricChannel> {
+        let probability = probability.unwrap_or(0.5);
         let prob_wrapper = Probability::try_new(probability).ok_or(PyValueError::new_err(
-            format!("{} is not a valid probability", probability,),
+            format!("{} is not a valid probability", probability),
         ))?;
         let channel = BinarySymmetricChannel::with_probability(prob_wrapper);
         Ok(PyBinarySymmetricChannel {
@@ -87,7 +88,8 @@ pub struct PyDepolarizingNoise {
 impl PyDepolarizingNoise {
     #[new]
     #[args(probability)]
-    pub fn new(probability: f64) -> PyResult<PyDepolarizingNoise> {
+    pub fn new(probability: Option<f64>) -> PyResult<PyDepolarizingNoise> {
+        let probability = probability.unwrap_or(0.75);
         let prob_wrapper = Probability::try_new(probability).ok_or(PyValueError::new_err(
             format!("{} is not a valid probability", probability,),
         ))?;
