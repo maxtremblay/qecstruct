@@ -1,7 +1,7 @@
-use pyo3::prelude::*;
 use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
 use pyo3::types::PyBytes;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_xoshiro::Xoshiro512StarStar;
 
 pub type RandomNumberGenerator = Xoshiro512StarStar;
@@ -31,16 +31,44 @@ impl PyRng {
 
     #[pyo3(text_signature = "(self)")]
     pub fn jump(&mut self) -> Self {
-        let other = Self { inner: self.inner.clone() };
+        let other = Self {
+            inner: self.inner.clone(),
+        };
         self.inner.jump();
         other
     }
 
     #[pyo3(text_signature = "(self)")]
     pub fn long_jump(&mut self) -> Self {
-        let other = Self { inner: self.inner.clone() };
+        let other = Self {
+            inner: self.inner.clone(),
+        };
         self.inner.long_jump();
         other
+    }
+
+    #[pyo3(text_signature = "(self)")]
+    #[args(range = "None")]
+    pub fn rand_int(&mut self, range: Option<(u64, u64)>) -> u64 {
+        match range {
+            Some(range) => self.inner.gen_range(range.0..range.1),
+            None => self.inner.gen(),
+        }
+    }
+
+    #[pyo3(text_signature = "(self)")]
+    #[args(range = "None")]
+    pub fn rand_float(&mut self, range: Option<(f64, f64)>) -> f64 {
+        match range {
+            Some(range) => self.inner.gen_range(range.0..range.1),
+            None => self.inner.gen(),
+        }
+    }
+
+    #[pyo3(text_signature = "(self)")]
+    #[args(probability = "0.5")]
+    pub fn rand_bool(&mut self, probability: f64) -> bool {
+        self.inner.gen_bool(probability)
     }
 
     pub fn __setstate__(&mut self, py: Python, state: PyObject) -> PyResult<()> {
@@ -55,10 +83,6 @@ impl PyRng {
     }
 
     pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
-        Ok(PyBytes::new(
-            py,
-            &serde_pickle::to_vec(&(&self.inner), true).unwrap(),
-        )
-        .to_object(py))
+        Ok(PyBytes::new(py, &serde_pickle::to_vec(&(&self.inner), true).unwrap()).to_object(py))
     }
 }
