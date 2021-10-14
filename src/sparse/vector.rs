@@ -59,6 +59,13 @@ impl PyBinaryVector {
         Self::from(SparseBinVec::zeros(length))
     }
 
+    /// Constructs a vector of the given length filled with ones.
+    #[staticmethod]
+    #[pyo3(text_signature = "(length)")]
+    pub fn ones(length: usize) -> Self {
+        Self::from(SparseBinVec::new(length, (0..length).collect()))
+    }
+
     /// Constructs a vector of length 0.
     ///
     /// This is useful as a placeholder since it allocates a minimal
