@@ -7,13 +7,15 @@ use pyo3::types::PyBytes;
 use pyo3::PyObjectProtocol;
 use pyo3::PySequenceProtocol;
 use pyo3::ToPyObject;
+use rand::distributions::{Bernoulli, Distribution};
+use sparse_bin_mat::SparseBinVec;
 
 pub(crate) fn random_regular_code(
     num_bits: usize,
     num_checks: usize,
     bit_degree: usize,
     check_degree: usize,
-    rng: &mut PyRng
+    rng: &mut PyRng,
 ) -> PyResult<PyLinearCode> {
     LinearCode::random_regular_code()
         .num_bits(num_bits)
@@ -101,10 +103,7 @@ impl From<LinearCode> for PyLinearCode {
 impl PyLinearCode {
     #[new]
     #[args(par_mat = "None", gen_mat = "None")]
-    pub fn new(
-        par_mat: Option<PyBinaryMatrix>,
-        gen_mat: Option<PyBinaryMatrix>,
-    ) -> PyResult<Self> {
+    pub fn new(par_mat: Option<PyBinaryMatrix>, gen_mat: Option<PyBinaryMatrix>) -> PyResult<Self> {
         match (par_mat, gen_mat) {
             (Some(h), Some(g)) => h.dot_with_matrix(&g.transposed()).and_then(|product| {
                 if product.is_zero() {
@@ -227,6 +226,30 @@ impl PyLinearCode {
         self.inner.has_codeword(&message.inner)
     }
 
+    /// Generates a random codeword from the given RNG.
+    ///
+    /// Parameters
+    /// ----------
+    /// rng: Rng
+    ///     The random number generator.
+    ///
+    /// Returns
+    /// -------
+    /// BinaryVector
+    ///     A random codeword.
+    #[pyo3(text_signature = "(self, rng)")]
+    pub fn random_codeword(&self, rng: &mut PyRng) -> PyBinaryVector {
+        let distribution = Bernoulli::new(0.5).unwrap();
+        self.inner
+            .generator_matrix()
+            .rows()
+            .filter(|_| distribution.sample(&mut rng.inner))
+            .fold(SparseBinVec::zeros(self.inner.len()), |codeword, row| {
+                &codeword.as_view() + &row
+            })
+            .into()
+    }
+
     /// Checks if the other code defined the same codespace
     /// as this code.
     ///
@@ -257,11 +280,7 @@ impl PyLinearCode {
     }
 
     pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
-        Ok(PyBytes::new(
-            py,
-            &serde_pickle::to_vec(&(&self.inner), true).unwrap(),
-        )
-        .to_object(py))
+        Ok(PyBytes::new(py, &serde_pickle::to_vec(&(&self.inner), true).unwrap()).to_object(py))
     }
 }
 
