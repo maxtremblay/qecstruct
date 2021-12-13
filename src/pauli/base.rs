@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 
 use pauli::{Pauli, I, X, Y, Z};
-use pyo3::exceptions::PyValueError;
+use pyo3::basic::CompareOp;
+use pyo3::exceptions::{PyNotImplementedError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3::PyObjectProtocol;
@@ -61,11 +62,7 @@ impl PyPauli {
     }
 
     pub fn __getstate__(&self, py: Python) -> PyResult<PyObject> {
-        Ok(PyBytes::new(
-            py,
-            &serde_pickle::to_vec(&(&self.inner), true).unwrap(),
-        )
-        .to_object(py))
+        Ok(PyBytes::new(py, &serde_pickle::to_vec(&(&self.inner), true).unwrap()).to_object(py))
     }
 }
 
@@ -74,5 +71,11 @@ impl PyObjectProtocol for PyPauli {
     fn __repr__(&self) -> String {
         self.inner.to_string()
     }
-}
 
+    fn __richcmp__(&self, other: PyRef<Self>, op: CompareOp) -> PyResult<bool> {
+        match op {
+            CompareOp::Eq => Ok(self.inner == other.inner),
+            _ => Err(PyNotImplementedError::new_err("comparison not implemented")),
+        }
+    }
+}
