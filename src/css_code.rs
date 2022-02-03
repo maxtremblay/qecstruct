@@ -103,7 +103,7 @@ impl PyCssCode {
     /// The number of X stablizer generators in the code.
     #[pyo3(text_signature = "(self)")]
     pub fn num_x_stabs(&self) -> usize {
-        self.inner.num_z_stabs()
+        self.inner.num_x_stabs()
     }
 
     /// The number of Z stablizer generators in the code.
